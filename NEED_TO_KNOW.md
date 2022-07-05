@@ -1,0 +1,2 @@
+-what are the desired settings for location configuration, region configuration, 
+-attained service now test access for API calling

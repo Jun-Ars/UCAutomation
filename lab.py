@@ -14,7 +14,7 @@ import os
 
 # The WSDL is a local file which contains the CUCM Schema
 WSDL_FILE = 'schema/AXLAPI.wsdl'
-CUCM_ADDRESS = '172.25.116.110'
+CUCM_ADDRESS = '10.10.20.1'
 
 
 # This class lets you view the incoming and outgoing http headers and/or XML
@@ -77,30 +77,61 @@ def add_app_user(uc, userid: str, password: str, presence_group_name: str):
         print(f"\nError: addAppUser: {err}")
 
 
-def add_location(uc, name: str):
-    pass
-
-
 def cls():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 
+def add_location(uc, name):
+    location = {
+        'name': name,
+        'relatedLocations': {
+            'relatedLocation': []
+        },
+        'withinAudioBandwidth': '0',
+        'withinVideoBandwidth': '0',
+        'withinImmersiveKbits': '0',
+        'betweenLocations': {
+            'betweenLocation': []
+        }
+    }
+    related_location = {
+        'locationName': 'Hub_None',
+        'rsvpSetting': 'Use System Default'
+    }
+    between_location = {
+        'locationName': 'Hub_None',
+        'weight': '50',
+        'audioBandwidth': '0',
+        'videoBandwidth': '0',
+        'immersiveBandwidth': '0'
+    }
+    location['relatedLocations']['relatedLocation'].append(related_location)
+    location['betweenLocations']['betweenLocation'].append(between_location)
+
+    try:
+        resp = uc.addLocation(location)
+    except Fault as err:
+        print(f'Zeep error: addLocation: {err}')
+
+
 if __name__ == '__main__':
     running = True
-    cucm = connect_to_cucm(input("Username: "), getpass())
+    cucm = connect_to_cucm('administrator', 'ciscopsdt')
 
-    while running:
-        cls()
-        print("\nWhat would you like to do?\n(1) Create an Application User")
-        option = input('\nEnter a number (or type Q to quit): ')
-        if option.lower() == 'q':
-            input('\nYou have Quit.\nPress Enter to exit...')
-            cls()
-            running = False
-        elif option == '1':
-            # Test calling the add app user function
-            add_app_user(cucm, input("New Application User's Username: "), 'Cisco1234', 'Standard Presence Group', )
-        else:
-            print("Invalid entry...")
+    add_location(cucm, 'TestLocation3')
 
-        input('Press Enter to continue...')
+    # while running:
+    #     cls()
+    #     print("\nWhat would you like to do?\n(1) Create an Application User")
+    #     option = input('\nEnter a number (or type Q to quit): ')
+    #     if option.lower() == 'q':
+    #         input('\nYou have Quit.\nPress Enter to exit...')
+    #         cls()
+    #         running = False
+    #     elif option == '1':
+    #         # Test calling the add app user function
+    #         add_app_user(cucm, input("New Application User's Username: "), 'Cisco1234', 'Standard Presence Group', )
+    #     else:
+    #         print("Invalid entry...")
+    #
+    #     input('Press Enter to continue...')
