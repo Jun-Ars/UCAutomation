@@ -52,11 +52,13 @@ def connect_to_cucm(username: str, password: str) -> Client.service:
     plugin = [MyLoggingPlugin()] if DEBUG else []
 
     # Create the Zeep client with the specified settings
-    client = Client(WSDL_FILE, settings=settings, transport=transport, plugins=plugin)
+    client = Client(WSDL_FILE, settings=settings, transport=transport,
+                    plugins=plugin)
 
     # Return the ServiceProxy object
-    return client.create_service('{http://www.cisco.com/AXLAPIService/}AXLAPIBinding',
-                                 f'https://{CUCM_ADDRESS}:8443/axl/')
+    return client.create_service(
+        '{http://www.cisco.com/AXLAPIService/}AXLAPIBinding',
+        f'https://{CUCM_ADDRESS}:8443/axl/')
 
 
 # Function to create a test application User
@@ -82,8 +84,13 @@ def cls():
 
 
 def add_location(uc, name):
+    """Tested and creating a location in the same fashion as exists in
+    production.
+
+    Create a Location in <uc> environment called <name> matching standards set
+    at other locations in the environment."""
     location = {
-        'name': name,
+        'name': f'{name}-Loc',
         'relatedLocations': {
             'relatedLocation': []
         },
@@ -102,8 +109,8 @@ def add_location(uc, name):
         'locationName': 'Hub_None',
         'weight': '50',
         'audioBandwidth': '0',
-        'videoBandwidth': '0',
-        'immersiveBandwidth': '0'
+        'videoBandwidth': '384',
+        'immersiveBandwidth': '384'
     }
     location['relatedLocations']['relatedLocation'].append(related_location)
     location['betweenLocations']['betweenLocation'].append(between_location)
@@ -111,15 +118,91 @@ def add_location(uc, name):
     try:
         resp = uc.addLocation(location)
     except Fault as err:
-        print(f'Zeep error: addLocation: {err}')
+        print(f'Error: addLocation: {err}')
+
+
+def add_region(uc, name):
+    """Tested in sandbox to be creating a region in the same fashion as exists in
+    production.
+
+    Create a Region in <uc> environment called <name>, matching standards set
+    at other regions in the environment. The related region, 'G729-Region',
+    sets the maximum audio bit rate to 8 kbps, as per the standard found in
+    production."""
+    # Create a region
+    new_region = {
+        'name': f'{name}-Region',
+        'relatedRegions': {
+            'relatedRegion': []
+        }
+    }
+
+    # List of all regions
+    all_regions = [region['name'] for region in
+                   uc.listRegion(
+                       searchCriteria={'name': '%'},
+                       returnedTags={'name': xsd.Nil}
+                   )['return']['region']]
+
+    # Create a relatedRegion sub object per each region in all_regions
+    for region in all_regions:
+        related_region = {
+            'regionName': region,
+            'bandwidth': '64 kbps',
+            'videoBandwidth': -2,
+            'lossyNetwork': 'Use System Default',
+            'codecPreference': {
+                '_value_1': 'Use System Default',
+                'uuid': ''
+            },
+            'immersiveVideoBandwidth': -2,
+        }
+        # Per standard, this specific region is set to a different bandwidth
+        if region == 'G729-Region':
+            related_region['bandwidth'] = '8 kbps'
+
+        # Add the relatedRegion to the region.relatedRegions array
+        new_region['relatedRegions']['relatedRegion'].append(related_region)
+
+    # Execute the addRegion request
+    print('\naddRegion response:\n')
+    try:
+        resp = uc.addRegion(new_region)
+        print(resp, '\n')
+    except Fault as err:
+        print(f'Zeep error: addRegion: {err}')
+
+
+def add_srst(uc, name, ip):
+    """Tested in sandbox to be creating an SRST in the same fashion as exists in
+    production.
+
+    Create an SRST in <uc> environment called <name>, matching standards set
+    at SRSTs in the environment."""
+    srst = {
+        'name': f'{name}-SRST',
+        'port': 2000,
+        'ipAddress': ip,
+        'ipv6Address': None,
+        'SipNetwork': ip,
+        'SipPort': 5060,
+        'srstCertificatePort': 2445,
+        'isSecure': 'false',
+    }
+    # Execute the addRegion request
+    print('\naddSRST response:\n')
+    try:
+        resp = uc.addSrst(srst)
+        print(resp, '\n')
+    except Fault as err:
+        print(f'Error: addRegion: {err}')
 
 
 if __name__ == '__main__':
     running = True
     cucm = connect_to_cucm('administrator', 'ciscopsdt')
 
-    add_location(cucm, 'TestLocation3')
-
+    add_srst(cucm, 'test1', '172.31.1.42')
     # while running:
     #     cls()
     #     print("\nWhat would you like to do?\n(1) Create an Application User")
