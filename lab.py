@@ -198,6 +198,68 @@ def add_srst(uc, name, ip):
         print(f'Error: addRegion: {err}')
 
 
+def add_route_group(uc, name):
+    """Tested in sandbox to be creating a Route Group in the same fashion as exists in production.
+
+    Create a Route Group in <uc> environment called <name>, matching standards set at SRSTs in the environment.
+    IMPORTANT: This function assumes that the Trunk "<name>-GW" already exists!"""
+    rg = {
+        'name': f'{name}-RG',
+        'distributionAlgorithm': 'Top Down',
+        'members': {'member': []}
+    }
+    rg['members']['member'].extend(
+        [
+            {
+                'deviceName': uc.getSipTrunk(name=f'{name}-GW')['return']['sipTrunk']['name'],
+                'deviceSelectionOrder': 1,
+                'port': '0'
+            },
+            {
+                'deviceName': uc.getSipTrunk(name=f'Markham-GW-Trunk')['return']['sipTrunk']['name'],
+                'deviceSelectionOrder': 2,
+                'port': '0'
+            }
+        ]
+    )
+    print('\naddRouteGroup response:\n')
+    try:
+        resp = uc.addRouteGroup(rg)
+        print(resp, '\n')
+    except Fault as err:
+        print(f'Error: addRouteGroup: {err}')
+
+
+def add_device_pool(uc, name):
+
+    dp = {
+        "name": f'{name}-DP',
+        "dateTimeSettingName": 'CMLocal',  # update to state timezone
+        "regionName": f'{name}-Region',
+        "locationName": f'{name}-Loc',
+        "localRouteGroup": [
+            {"name": '911 Primary', "value": f'{name}-RG'},
+            {"name": 'PSTN Primary', "value": f'Centralized-SIP-Trunk-RG'}
+        ],
+        "mediaResourceListName": 'Hub-MRGL',
+        "srstName": f'{name}-SRST',
+        "callManagerGroupName": 'Residence-CMG',
+        "networkLocale": '',
+        'cgpnTransformationCssName': 'Incoming-ANI-E164-CSS',
+        'callingPartyNationalPrefix': '+1',
+        'callingPartyInternationalPrefix': '+',
+        'callingPartyUnknownPrefix': 'Default',
+        'callingPartySubscriberPrefix': '+1',
+    }
+
+    print('\naddDevicePool response:\n')
+    try:
+        resp = uc.addDevicePool(dp)
+        print(resp, '\n')
+    except Fault as err:
+        print(f'Error: addDevicePool: {err}')
+
+
 if __name__ == '__main__':
     running = True
     cucm = connect_to_cucm('administrator', 'ciscopsdt')
