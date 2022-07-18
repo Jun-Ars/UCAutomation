@@ -202,7 +202,7 @@ if __name__ == '__main__':
     running = True
     cucm = connect_to_cucm('administrator', 'ciscopsdt')
 
-    add_srst(cucm, 'test1', '172.31.1.42')
+    add_device_pool(cucm, 'test')
     # while running:
     #     cls()
     #     print("\nWhat would you like to do?\n(1) Create an Application User")
