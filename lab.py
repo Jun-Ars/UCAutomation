@@ -1,21 +1,21 @@
-from typing import List
+import base64
+import os
 
+import typer
+import urllib3
+from dotenv import load_dotenv
 from lxml import etree
 from requests import Session
 from requests.auth import HTTPBasicAuth
-
 from zeep import Client, Settings, Plugin, xsd
 from zeep.transports import Transport
-from zeep.cache import SqliteCache
 from zeep.exceptions import Fault
-import urllib3
-import base64
-from dotenv import load_dotenv
-import os
 
 # The WSDL is a local file which contains the CUCM Schema
 WSDL_FILE = 'schema/AXLAPI.wsdl'
 CUCM_ADDRESS = '10.10.20.1'
+
+app = typer.Typer()
 
 
 # This class lets you view the incoming and outgoing http headers and/or XML
@@ -33,10 +33,9 @@ class MyLoggingPlugin(Plugin):
         print(f'\nResponse\n-------\nHeaders:\n{http_headers}\n\nBody:\n{xml}')
 
 
-# Connect to CUCM and create ProxyService
 def connect_to_cucm(username: str, password: str) -> Client.service:
     # Change to true to enable output of request/response headers and XML
-    DEBUG = False
+    debug = False
 
     session = Session()
     session.verify = False
@@ -50,7 +49,7 @@ def connect_to_cucm(username: str, password: str) -> Client.service:
     settings = Settings(strict=False, xml_huge_tree=True)
 
     # If debug output is requested, add the MyLoggingPlugin callback
-    plugin = [MyLoggingPlugin()] if DEBUG else []
+    plugin = [MyLoggingPlugin()] if debug else []
 
     # Create the Zeep client with the specified settings
     client = Client(WSDL_FILE, settings=settings, transport=transport,
@@ -62,6 +61,7 @@ def connect_to_cucm(username: str, password: str) -> Client.service:
         f'https://{CUCM_ADDRESS}:8443/axl/')
 
 
+@app.command()
 def prep_env():
     """Prepare a fresh lab environment to mimic the existing production
     environment.
@@ -761,7 +761,9 @@ def add_default_partitions(name: str, gmt_value: int = -5):
         print(f'Error: addPartition: {err}')
 
 
-def add_full_site(name: str, srst_ip: str, algo_open: str = '06:00', algo_close: str = '20:00', gmt_value: int = -5):
+@app.command()
+def add_full_site(name: str, srst_ip: str, algo_open: str = '06:00',
+                  algo_close: str = '20:00', gmt_value: int = -5):
     add_location(name)
     add_region(name)
     add_srst(name, srst_ip)
@@ -773,9 +775,11 @@ def add_full_site(name: str, srst_ip: str, algo_open: str = '06:00', algo_close:
     # Add_vm_pilot
     # add_vm_profile
     # add_route_pattern
-    add_SIP_trunk(name, srst_ip) # needs {name}-Trunk-Incoming-CSS for inbound calls
+    add_SIP_trunk(name,
+                  srst_ip)  # needs {name}-Trunk-Incoming-CSS for inbound calls
     # add route_group
-    add_route_group(name) # needs route groups in order to update local route groups
+    add_route_group(
+        name)  # needs route groups in order to update local route groups
 
 
 if __name__ == '__main__':
@@ -786,3 +790,5 @@ if __name__ == '__main__':
         base64.b64decode(os.getenv('EN_PASSWORD')).decode("utf-8")
     )
     print(cucm.getCCMVersion())
+
+    app()
