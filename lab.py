@@ -786,9 +786,9 @@ if __name__ == '__main__':
     running = True
     load_dotenv()
     cucm = connect_to_cucm(
-        os.getenv('USERNAME'),
-        base64.b64decode(os.getenv('EN_PASSWORD')).decode("utf-8")
+        base64.b64decode(os.getenv('LAB_USERNAME')).decode("utf-8"),
+        base64.b64decode(os.getenv('LAB_PASSWORD')).decode("utf-8")
     )
-    print(cucm.getCCMVersion())
+    cucm.getCCMVersion()
 
     app()
