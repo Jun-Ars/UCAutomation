@@ -337,7 +337,7 @@ def prep_env():
         except Fault as err:
             print(f'Error: addDevicePool: {err}')
 
-    def prep_add_Markham_SIP_trunk(name):
+    def prep_add_Markham_SIP_trunk():
         # Create an object with the new SIP trunk fields and data
         sip_trunk_data = {
             'name': 'Markham-GW-Trunk',
@@ -388,6 +388,9 @@ def prep_env():
     prep_add_partition('Centralized-LD-PT')
     prep_add_partition('Incoming-ANI-E164-PT')
     prep_add_partition('Centralized-E164-PT')
+    prep_add_partition('voicemail-PT')
+    prep_add_partition('911-Emergency-PT')
+    prep_add_partition('Chartwell-Call-Park-All')
     prep_add_markhamGW_incoming_css()
     prep_add_Incoming_ANI_E164_css()
     prep_add_centralized_ld_css()
@@ -716,7 +719,7 @@ def add_device_pool(name: str):
         print(f'Error: addDevicePool: {err}')
 
 
-def add_default_partitions(name: str, gmt_value: int = -5):
+def add_default_partitions(name: str, gmt_value: int, sd: bool, pool: bool):
     gmt_string = f'Etc/GMT+{gmt_value * -1}'
 
     partition_closed = {
@@ -747,31 +750,264 @@ def add_default_partitions(name: str, gmt_value: int = -5):
         'useOriginatingDeviceTimeZone': 'true',
         'timeZone': 'Etc/GMT'
     }
+    if sd:
+        partition_sd = {
+            'name': f'{name}-SD-PT',
+            'description': f'{name}-SD-PT',
+            'timeScheduleIdName': None,
+            'useOriginatingDeviceTimeZone': 'true',
+            'timeZone': 'Etc/GMT'
+        }
+    if pool:
+        partition_pool = {
+            'name': f'{name}-Pool-PT',
+            'description': f'{name}-Pool-PT',
+            'timeScheduleIdName': None,
+            'useOriginatingDeviceTimeZone': 'true',
+            'timeZone': 'Etc/GMT'
+        }
     print('\nadd Partition response:\n')
     try:
         resp = cucm.addRoutePartition(partition_closed)
-        print(f'Partition successfully added:\n {resp}')
+        print(f'Closed Partition successfully added:\n {resp}')
         resp = cucm.addRoutePartition(partition_open)
-        print(f'Partition successfully added:\n {resp}')
+        print(f'Open Partition successfully added:\n {resp}')
         resp = cucm.addRoutePartition(partition_internal)
-        print(f'Partition successfully added:\n {resp}')
+        print(f'Internal Partition successfully added:\n {resp}')
         resp = cucm.addRoutePartition(partition_mi)
-        print(f'Partition successfully added:\n {resp}')
+        print(f'MI Partition successfully added:\n {resp}')
+        if sd:
+            resp = cucm.addRoutePartition(partition_sd)
+            print(f'SD Partition successfully added:\n {resp}')
+        if pool:
+            resp = cucm.addRoutePartition(partition_pool)
+            print(f'Pool Partition successfully added:\n {resp}')
     except Fault as err:
         print(f'Error: addPartition: {err}')
 
 
+def add_css(name: str, sd: bool, pool: bool):
+    device_css = {
+        'name': f'{name}-Device-CSS',
+        'description': f'{name}-Device-CSS',
+        'members': {
+            'member': [
+                {
+                    'routePartitionName': {
+                        '_value_1': f'{name}-Internal-PT',
+                    },
+                    'index': 1,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'voicemail-pt',
+                    },
+                    'index': 2,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': '911-Emergency-PT',
+                    },
+                    'index': 3,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Chartwell-Internal-ALL',
+                    },
+                    'index': 4,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Chartwell-Call-Park-All',
+                    },
+                    'index': 5,
+                }
+            ]
+        }
+    }
+    ld_forwarding_css = {
+        'name': f'{name}-LD-Forwarding-CSS',
+        'description': f'{name}-LD-Forwarding-CSS',
+        'members': {
+            'member': [
+                {
+                    'routePartitionName': {
+                        '_value_1': f'{name}-Internal-PT',
+                    },
+                    'index': 1,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Chartwell-Internal-ALL',
+                    },
+                    'index': 2,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'voicemail-pt',
+                    },
+                    'index': 3,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Block-Toll-Fraud-ALL',
+                    },
+                    'index': 4,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Centralized-Local-PT',
+                    },
+                    'index': 5,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Centralized-LD-PT',
+                    },
+                    'index': 6,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Centralized-E164-PT',
+                    },
+                    'index': 7,
+                }
+            ]
+        }
+    }
+    mi_css = {
+        'name': f'{name}-MI-CSS',
+        'description': f'{name}-MI-CSS',
+        'members': {
+            'member': [
+                {
+                    'routePartitionName': {
+                        '_value_1': f'{name}-MI-PT',
+                    },
+                    'index': 1,
+                }
+            ]
+        }
+    }
+    mwi_css = {
+        'name': f'{name}-MWI-CSS',
+        'description': f'{name}-MWI-CSS',
+        'members': {
+            'member': [
+                {
+                    'routePartitionName': {
+                        '_value_1': f'{name}-Internal-PT',
+                    },
+                    'index': 1,
+                }
+            ]
+        }
+    }
+    trunk_incoming_css = {
+        'name': f'{name}-Trunk-Incoming-CSS',
+        'description': f'{name}-Trunk-Incoming-CSS',
+        'members': {
+            'member': [
+                {
+                    'routePartitionName': {
+                        '_value_1': f'{name}-Internal-PT',
+                    },
+                    'index': 1,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': 'Chartwell-Internal-ALL',
+                    },
+                    'index': 2,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': f'{name}-Algo-Open-PT',
+                    },
+                    'index': 3,
+                },
+                {
+                    'routePartitionName': {
+                        '_value_1': f'{name}-Algo-Closed-PT',
+                    },
+                    'index': 4,
+                }
+            ]
+        }
+    }
+
+    if sd:
+        device_css['members']['member'].append({
+            'routePartitionName': {
+                '_value_1': f'{name}-SD-PT',
+            },
+            'index': len(device_css['members']['member']) + 1,
+        })
+
+    if pool:
+        device_css['members']['member'].append({
+            'routePartitionName': {
+                '_value_1': f'{name}-Pool-PT',
+            },
+            'index': len(device_css['members']['member']) + 1,
+        })
+        pool_css = {
+            'name': f'{name}-Device-Pool-CSS',
+            'description': f'{name}-Device-Pool-CSS',
+            'members': {
+                'member': [
+                    {
+                        'routePartitionName': {
+                            '_value_1': f'911-Emergency-PT',
+                        },
+                        'index': 1,
+                    },
+                    {
+                        'routePartitionName': {
+                            '_value_1': f'{name}-Internal-PT',
+                        },
+                        'index': 2,
+                    },
+                    {
+                        'routePartitionName': {
+                            '_value_1': f'{name}-Pool-PT',
+                        },
+                        'index': 3,
+                    }
+                ]
+            }
+        }
+
+    print('\nadd CSS response:\n')
+    try:
+        resp = cucm.addCss(device_css)
+        print(f'{name} Device CSS successfully added:\n {resp}')
+        resp = cucm.addCss(ld_forwarding_css)
+        print(f'{name} LD ForwardingCSS successfully added:\n {resp}')
+        resp = cucm.addCss(mi_css)
+        print(f'{name} MI CSS successfully added:\n {resp}')
+        resp = cucm.addCss(mwi_css)
+        print(f'{name} MWI CSS successfully added:\n {resp}')
+        resp = cucm.addCss(trunk_incoming_css)
+        print(f'{name} Trunk Incoming CSS successfully added:\n {resp}')
+        if pool:
+            resp = cucm.addCss(pool_css)
+            print(f'Device Pool CSS successfully added:\n {resp}')
+    except Fault as err:
+        print(f'Error: add CSS: {err}')
+
+
 @app.command()
-def add_full_site(name: str, srst_ip: str, algo_open: str = '06:00',
-                  algo_close: str = '20:00', gmt_value: int = -5):
+def add_full_site(name: str, srst_ip: str, algo_open: str = '06:00', algo_close: str = '20:00', gmt_value: int = -5,
+                  sd: bool = False, pool: bool = False):
     add_location(name)
     add_region(name)
     add_srst(name, srst_ip)
     add_device_pool(name)
     add_algo_time_period(name, algo_open, algo_close)
     add_algo_time_schedule(name, algo_open, algo_close)
-    add_default_partitions(name, gmt_value)
-    # add_CSS
+    add_default_partitions(name, gmt_value, sd, pool)
+    add_css(name, sd, pool)
     # Add_vm_pilot
     # add_vm_profile
     # add_route_pattern
