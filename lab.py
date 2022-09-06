@@ -610,13 +610,14 @@ def add_SIP_trunk(name: str, ip: str):
         'protocolSide': 'Network',
         'devicePoolName': f'{name}-DP',
         'locationName': f'{name}-Loc',
+        'callingSearchSpaceName': f'{name}-Trunk-Incoming-CSS',
         'securityProfileName': 'Non Secure SIP Trunk Profile',
         'sipProfileName': 'Voice Gateway SIP Profile',
         'presenceGroupName': 'Standard Presence group',
         'callingAndCalledPartyInfoFormat': 'Deliver DN only in connected party',
         'destinations': [],
         'mediaResourceListName': 'Hub-MRGL',
-        'runOnEveryNode': 'true',
+        'runOnEveryNode': 'true'
     }
 
     # Create and add a Destination object to the Destinations array
@@ -1011,11 +1012,8 @@ def add_full_site(name: str, srst_ip: str, algo_open: str = '06:00', algo_close:
     # Add_vm_pilot
     # add_vm_profile
     # add_route_pattern
-    add_SIP_trunk(name,
-                  srst_ip)  # needs {name}-Trunk-Incoming-CSS for inbound calls
-    # add route_group
-    add_route_group(
-        name)  # needs route groups in order to update local route groups
+    add_SIP_trunk(name, srst_ip)  # needs {name}-Trunk-Incoming-CSS for inbound calls
+    add_route_group(name)
 
 
 if __name__ == '__main__':
